@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reachy-sous-chef"
+version = "0.1.0"
+description = "A hands-free kitchen sous-chef for Reachy Mini, powered by Claude Fable 5.1"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "David Gu" }]
+dependencies = [
+    # Brain
+    "anthropic>=0.60",
+    # Robot (pulls gstreamer-bundle on macOS, rust kinematics, etc.)
+    "reachy-mini>=1.10.0",
+    # Audio / speech - all local on the Mac
+    "faster-whisper>=1.1",
+    "kokoro>=0.9.4",
+    "misaki[zh]>=0.9.4",
+    "silero-vad>=5.1",
+    "torch>=2.2",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "soundfile>=0.12",
+    # Glue
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+    "rich>=13.0",
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.5"]
+# Play TTS through the Mac speakers in `chat` mode (no robot needed)
+desktop-audio = ["sounddevice>=0.4"]
+
+[project.scripts]
+sous-chef = "sous_chef.cli:app"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sous_chef = ["py.typed", "assets/*.wav"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]

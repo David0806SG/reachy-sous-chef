@@ -1,0 +1,39 @@
+# Reachy Sous-Chef settings. Any key here can also be set as SOUS_CHEF_<KEY> in the environment.
+
+# --- Claude ------------------------------------------------------------------
+anthropic_model: claude-fable-5-1     # check the exact model id in your Anthropic console
+max_tokens: 700
+
+# --- Robot -------------------------------------------------------------------
+robot_host: reachy-mini.local         # or the robot's IP, e.g. 192.168.1.42
+robot_port: 8000
+robot_connection_mode: network        # the Wireless robot runs its own daemon; the Mac is a network client
+head_tracking: true                   # she keeps her eyes on you while idle and speaking
+speaker_gain: 0.85
+
+# --- Listening ---------------------------------------------------------------
+require_name: true                    # "Reachy, …" to talk; false = answers everything she hears
+follow_up_window_s: 20                # after she answers, follow-ups need no name for this long
+vad_threshold: 0.5
+vad_min_speech_ms: 250
+vad_end_silence_ms: 700               # raise to ~900 if she cuts you off mid-sentence
+vad_max_utterance_s: 20
+
+# --- Speech-to-text (faster-whisper, local) ----------------------------------
+whisper_model: small                  # tiny | base | small | medium | large-v3 | turbo
+whisper_compute_type: int8
+whisper_languages: [en, zh]           # auto-detected per utterance
+
+# --- Text-to-speech (Kokoro, local) ------------------------------------------
+tts_voice_en: af_heart                # try bf_emma for a British voice
+tts_voice_zh: zf_xiaoxiao             # zf_xiaobei, zf_xiaoni, zf_xiaoyi, zm_yunjian, zm_yunxi…
+tts_speed: 1.05
+
+# --- Kitchen -----------------------------------------------------------------
+recipes_dir: recipes
+user_name: David
+persona_extra: |                      # free text appended to her instructions — tell her about your kitchen
+  Prefer metric and Celsius.
+  When he asks "how long", give the number first, then the cue to look for.
+
+log_level: INFO

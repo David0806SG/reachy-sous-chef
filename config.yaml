@@ -23,7 +23,7 @@ barge_in_min_speech_ms: 300           # sustained speech in a listening gap that
 barge_gap_ms: 500                     # she pauses this long between sentences to listen (mic is deaf while she talks)
 
 # --- Speech-to-text (faster-whisper, local) ----------------------------------
-whisper_model: small                  # tiny | base | small | medium | large-v3 | turbo
+whisper_model: turbo                  # tiny | base | small | medium | large-v3 | turbo — small misheard "chicken rice" as "chicken lines"
 whisper_compute_type: int8
 whisper_languages: [en, zh]           # auto-detected per utterance
 

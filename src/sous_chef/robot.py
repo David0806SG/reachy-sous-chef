@@ -160,6 +160,7 @@ class ReachyRobot:
         self._look_active = False  # True while she's deliberately looking somewhere (not at the user)
         self._look_pose: dict[str, float] = {"pitch": 0.0, "yaw": 0.0}
         self._sound_cache: dict[str, str] = {}  # local path -> daemon-side name after upload
+        self._sound_lock = threading.Lock()  # two quick play_sound calls must not both upload
 
     # ------------------------------------------------------------------ lifecycle
     def connect(self) -> None:
@@ -283,14 +284,19 @@ class ReachyRobot:
 
         def _play() -> None:
             try:
-                remote = self._sound_cache.get(name_or_path)
-                if remote is None:
-                    audio = getattr(mini.media, "audio", None)
-                    if os.path.isfile(name_or_path) and audio is not None and hasattr(audio, "upload_sound"):
-                        remote = audio.upload_sound(name_or_path)  # WebRTC: returns the daemon-side name
-                    else:
-                        remote = name_or_path
-                    self._sound_cache[name_or_path] = remote
+                with self._sound_lock:
+                    remote = self._sound_cache.get(name_or_path)
+                    if remote is None:
+                        audio = getattr(mini.media, "audio", None)
+                        if (
+                            os.path.isfile(name_or_path)
+                            and audio is not None
+                            and hasattr(audio, "upload_sound")
+                        ):
+                            remote = audio.upload_sound(name_or_path)  # returns the daemon-side name
+                        else:
+                            remote = name_or_path
+                        self._sound_cache[name_or_path] = remote
                 mini.media.play_sound(remote)
             except Exception as exc:
                 log.debug("play_sound failed: %s", exc)

@@ -25,6 +25,9 @@ thread) · `fake_robot.py` · `brain/{agent,tools,prompts}.py` · `audio/{vad,st
 - Local sound files are uploaded once via `media.audio.upload_sound()`, then played by daemon-side name.
 - Anthropic replay: content blocks must be `model_dump(mode="json", exclude_unset=True, exclude_none=True)`
   before going back as an assistant message, or the API 400s on the second round of any tool turn.
+- The daemon can be `state: "stopped"` while HTTP still answers (idle timeout / Reachy Mini Control) —
+  a green `sous-chef check` hours ago means nothing. Restart with `POST /api/daemon/start?wake_up=true`
+  and give it ~10 s to settle before connecting, or the first motion jobs time out / lose connection.
 
 ## Conventions
 - Every robot capability goes through the `Robot` protocol; `FakeRobot` must keep parity (tests depend on it).

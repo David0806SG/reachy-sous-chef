@@ -28,6 +28,7 @@ thread) · `fake_robot.py` · `brain/{agent,tools,prompts}.py` · `audio/{vad,st
 - The daemon can be `state: "stopped"` while HTTP still answers (idle timeout / Reachy Mini Control) —
   a green `sous-chef check` hours ago means nothing. Restart with `POST /api/daemon/start?wake_up=true`
   and give it ~10 s to settle before connecting, or the first motion jobs time out / lose connection.
+  Pause it with `POST /api/daemon/stop?goto_sleep=true` (both query params are required, not optional).
 - The mic path (XVF3800 DSP) is **half-duplex**, not just AEC: while the speaker plays, the near end
   is gated to ~zero — measured max 0.001 Silero speech-prob for a person talking over playback vs
   1.000 for the same person with the speaker silent. Her own echo also cancels to ~0.002. So: she can

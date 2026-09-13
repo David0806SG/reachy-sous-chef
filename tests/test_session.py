@@ -146,6 +146,36 @@ def test_mic_is_paused_while_speaking(settings):
     assert session._mic_paused()
 
 
+def test_barge_in_aborts_speech(settings):
+    session, robot, *_ = make_session(settings, [], [])
+    robot.connect()
+
+    class SlowTTS:
+        def synthesize(self, text):
+            for _ in range(50):
+                time.sleep(0.02)
+                yield np.zeros(1600, dtype=np.float32)
+
+    session.tts = SlowTTS()
+    t = threading.Thread(target=session.speak, args=("a very long reply",))
+    t.start()
+    time.sleep(0.15)
+    session._barge_in()
+    t.join(timeout=2.0)
+    assert not t.is_alive()
+    assert "stop_speaking" in robot.events
+    assert len(robot.spoken) < 50  # the rest of the reply was dropped
+    assert session._speak_abort is None  # cleaned up
+
+
+def test_barge_in_wiring_follows_setting(settings):
+    session, *_ = make_session(settings, [], [])
+    assert session.segmenter.on_barge is not None  # on by default
+    settings.barge_in = False
+    session2, *_ = make_session(settings, [], [])
+    assert session2.segmenter.on_barge is None  # falls back to drop-while-speaking
+
+
 def test_brain_failure_is_spoken_not_fatal(settings):
     class BoomLLM:
         def create(self, **kw):

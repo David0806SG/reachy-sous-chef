@@ -54,6 +54,8 @@ class Settings:
     vad_end_silence_ms: int = 700
     vad_max_utterance_s: float = 20.0
     vad_pre_roll_ms: int = 300
+    barge_in: bool = True  # talking over her stops her mid-sentence (robot-side AEC keeps her own voice out)
+    barge_in_min_speech_ms: int = 400  # sustained speech needed to count as an interruption, not an "uh"
 
     # --- Speech-to-text (faster-whisper) --------------------------------------
     whisper_model: str = "small"  # tiny/base/small/medium/large-v3/turbo

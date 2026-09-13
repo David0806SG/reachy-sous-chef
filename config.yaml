@@ -18,6 +18,8 @@ vad_threshold: 0.5
 vad_min_speech_ms: 250
 vad_end_silence_ms: 700               # raise to ~900 if she cuts you off mid-sentence
 vad_max_utterance_s: 20
+barge_in: true                        # talking over her stops her mid-sentence
+barge_in_min_speech_ms: 400           # sustained speech needed to interrupt (raise if she stops for coughs)
 
 # --- Speech-to-text (faster-whisper, local) ----------------------------------
 whisper_model: small                  # tiny | base | small | medium | large-v3 | turbo

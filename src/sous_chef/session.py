@@ -63,6 +63,7 @@ class Session:
 
         self.events: "queue.Queue[Event]" = queue.Queue()
         self._speaking_until = 0.0
+        self._speak_abort: threading.Event | None = None
         self._stop = threading.Event()
         self._sleeping = False
         self._sleep_requested = False
@@ -78,6 +79,8 @@ class Session:
             max_utterance_s=settings.vad_max_utterance_s,
             pre_roll_ms=settings.vad_pre_roll_ms,
             is_paused=self._mic_paused,
+            on_barge=self._barge_in if settings.barge_in else None,
+            barge_min_speech_ms=settings.barge_in_min_speech_ms,
         )
         ctx = ToolContext(robot=robot, timers=self.timers, recipes=self.recipes, on_sleep=self._request_sleep)
         self.agent = SousChefAgent(
@@ -199,9 +202,11 @@ class Session:
     # ------------------------------------------------------------------ speaking
     def speak(self, text: str) -> None:
         """Synthesize sentence-by-sentence in a worker while the main thread plays, so sentence 2
-        renders while sentence 1 is heard and the first sentence starts as soon as it's ready."""
+        renders while sentence 1 is heard and the first sentence starts as soon as it's ready.
+        A barge-in (the chef talking over her) sets the abort event and cuts playback short."""
         chunks: "queue.Queue[np.ndarray | None]" = queue.Queue(maxsize=4)
         abort = threading.Event()
+        self._speak_abort = abort
 
         def produce() -> None:
             try:
@@ -225,8 +230,11 @@ class Session:
         self._speaking_until = float("inf")
         threading.Thread(target=produce, name="tts", daemon=True).start()
         try:
-            while True:
-                chunk = chunks.get()
+            while not abort.is_set():
+                try:
+                    chunk = chunks.get(timeout=0.2)
+                except queue.Empty:
+                    continue
                 if chunk is None:
                     break
                 try:
@@ -237,8 +245,18 @@ class Session:
                     break
         finally:
             abort.set()
+            self._speak_abort = None
             # ignore the mic briefly so the tail of our own voice isn't transcribed
             self._speaking_until = time.monotonic() + 0.4
+
+    def _barge_in(self) -> None:
+        """Called from the capture thread when the chef talks over her (sustained speech while
+        the robot is speaking). Cut playback; the interrupting utterance continues normally."""
+        abort = self._speak_abort
+        if abort is not None and not abort.is_set():
+            log.info("barge-in: chef is talking; going quiet")
+            abort.set()
+            self.robot.stop_speaking()
 
     def _mic_paused(self) -> bool:
         return time.monotonic() < self._speaking_until

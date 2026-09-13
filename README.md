@@ -116,8 +116,12 @@ Design choices worth knowing:
   voice and into the open mic, so only the motion is played.
 - **Latency is masked, not hidden.** As soon as an utterance is addressed to her she tilts into a
   "hmm" pose; Claude's round trip reads as her thinking.
-- **She can't hear herself.** The VAD drops audio while she speaks (plus 400 ms), so her own voice
-  is never transcribed. Barge-in (interrupting her) is a next step, not a v1 feature.
+- **You can talk over her.** The robot's WebRTC pipeline does echo cancellation (measured: her own
+  voice never rises above 0.25 speech probability on her own mics), so the VAD keeps listening while
+  she speaks. ~400 ms of sustained speech cuts her off mid-sentence and your words go through the
+  normal pipeline — no name needed, the follow-up window is open. A cough won't stop her
+  (`barge_in_min_speech_ms`); set `barge_in: false` to restore strict turn-taking, which also makes
+  her deaf while speaking (plus a 400 ms tail) so she never transcribes herself.
 - **Sentence-pipelined TTS.** Sentence 2 renders while sentence 1 plays.
 - **Photos leave the house only when asked.** The camera is read only by the `take_a_look` tool.
   Older photos are dropped from the conversation history after two turns.
@@ -146,7 +150,6 @@ The tests use a fake robot, scripted Claude responses, silent TTS and a stub of 
 
 ## 9. Ideas for v2
 
-- Barge-in: stop speaking when you start talking (SDK `clear_player()` is already wired in `stop_speaking`).
 - Stream Claude's reply and start TTS on the first sentence.
 - Use the mic array's direction-of-arrival (`media.get_DoA()`) to turn toward whoever spoke.
 - "Reachy, remember this" — persist notes per recipe.

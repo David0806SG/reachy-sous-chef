@@ -82,6 +82,10 @@ class Segmenter:
 
     - starts an utterance after ``min_speech_ms`` of speech (keeps ``pre_roll_ms`` before it)
     - ends it after ``end_silence_ms`` of silence, or at ``max_utterance_s``
+    - while ``is_paused()`` (the robot is talking): with ``on_barge`` unset, audio is dropped so she
+      never transcribes herself; with ``on_barge`` set, listening continues (robot-side AEC keeps her
+      own voice out) and ``barge_min_speech_ms`` of sustained speech fires the callback — the caller
+      stops playback and the interrupting utterance carries on through the normal path.
     """
 
     def __init__(
@@ -93,15 +97,20 @@ class Segmenter:
         max_utterance_s: float = 20.0,
         pre_roll_ms: int = 300,
         is_paused: Callable[[], bool] | None = None,
+        on_barge: Callable[[], None] | None = None,
+        barge_min_speech_ms: int = 400,
     ) -> None:
         self.det = detector
         self.threshold = threshold
         self.min_speech_chunks = max(1, int(min_speech_ms / 1000 * RATE / CHUNK))
         self.end_silence_chunks = max(1, int(end_silence_ms / 1000 * RATE / CHUNK))
         self.max_chunks = int(max_utterance_s * RATE / CHUNK)
+        self.on_barge = on_barge
+        self.barge_min_chunks = max(1, int(barge_min_speech_ms / 1000 * RATE / CHUNK))
         # Ring buffer of recent chunks: pre-roll + the chunks that triggered speech start.
         pre_roll_chunks = max(1, int(pre_roll_ms / 1000 * RATE / CHUNK))
-        self.pre_roll: deque[np.ndarray] = deque(maxlen=pre_roll_chunks + self.min_speech_chunks)
+        trigger_chunks = max(self.min_speech_chunks, self.barge_min_chunks if on_barge else 0)
+        self.pre_roll: deque[np.ndarray] = deque(maxlen=pre_roll_chunks + trigger_chunks)
         self.is_paused = is_paused or (lambda: False)
         self._buf: list[np.ndarray] = []
         self._in_speech = False
@@ -119,7 +128,8 @@ class Segmenter:
 
     def utterances(self, stream: Iterable[np.ndarray]) -> Iterator[np.ndarray]:
         for chunk in self._rechunk(stream):
-            if self.is_paused():
+            paused = self.is_paused()
+            if paused and self.on_barge is None:
                 # robot is talking: forget everything so we don't transcribe ourselves
                 self._reset_state()
                 continue
@@ -129,10 +139,14 @@ class Segmenter:
                 self.pre_roll.append(chunk)
                 if speech:
                     self._speech_run += 1
-                    if self._speech_run >= self.min_speech_chunks:
+                    # While she talks, demand a longer run: an interruption, not a cough.
+                    need = self.barge_min_chunks if paused else self.min_speech_chunks
+                    if self._speech_run >= need:
                         self._in_speech = True
                         self._buf = list(self.pre_roll)
                         self._silence_run = 0
+                        if paused and self.on_barge is not None:
+                            self.on_barge()
                 else:
                     self._speech_run = 0
                 continue

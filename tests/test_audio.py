@@ -77,6 +77,32 @@ def test_segmenter_pause_drops_audio():
     assert len(list(seg.utterances([np.concatenate([speech, silence])]))) == 1
 
 
+def test_segmenter_barge_in_fires_and_utterance_continues():
+    paused = {"v": True}
+    barged = []
+
+    def on_barge():
+        barged.append(True)
+        paused["v"] = False  # like the session: playback stops, mic unpauses
+
+    seg = Segmenter(StepDetector(), is_paused=lambda: paused["v"], on_barge=on_barge, barge_min_speech_ms=400)
+    speech, silence = _signal(1.0, 1.0)
+    utts = list(seg.utterances([np.concatenate([speech, silence])]))
+    assert barged == [True]
+    assert len(utts) == 1  # the interrupting words become a normal utterance
+    assert len(utts[0]) >= 1.0 * RATE  # nothing said before the barge is lost
+
+
+def test_segmenter_barge_needs_sustained_speech():
+    barged = []
+    seg = Segmenter(
+        StepDetector(), is_paused=lambda: True, on_barge=lambda: barged.append(True), barge_min_speech_ms=400
+    )
+    blip, gap = _signal(0.2, 0.5)  # a 200 ms "uh" must not cut her off
+    assert list(seg.utterances([np.concatenate([blip, gap])])) == []
+    assert barged == []
+
+
 def test_energy_detector_adapts_floor():
     det = EnergyDetector()
     quiet = np.full(CHUNK, 0.001, dtype=np.float32)

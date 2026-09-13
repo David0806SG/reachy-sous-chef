@@ -54,8 +54,13 @@ class Settings:
     vad_end_silence_ms: int = 700
     vad_max_utterance_s: float = 20.0
     vad_pre_roll_ms: int = 300
-    barge_in: bool = True  # talking over her stops her mid-sentence (robot-side AEC keeps her own voice out)
-    barge_in_min_speech_ms: int = 400  # sustained speech needed to count as an interruption, not an "uh"
+    # The mic hardware (XVF3800) mutes the near end while the speaker plays, so she can only hear
+    # you between sentences: she pauses barge_gap_ms to listen, and stops at the sentence boundary.
+    barge_in: bool = True  # keep talking over her and she stops at the end of the sentence
+    barge_in_min_speech_ms: int = (
+        300  # sustained speech inside a listening gap that counts as an interruption
+    )
+    barge_gap_ms: int = 500  # between-sentence listening pause; 0 = no pause (barge-in then rarely triggers)
 
     # --- Speech-to-text (faster-whisper) --------------------------------------
     whisper_model: str = "small"  # tiny/base/small/medium/large-v3/turbo

@@ -203,10 +203,15 @@ class Session:
     def speak(self, text: str) -> None:
         """Synthesize sentence-by-sentence in a worker while the main thread plays, so sentence 2
         renders while sentence 1 is heard and the first sentence starts as soon as it's ready.
-        A barge-in (the chef talking over her) sets the abort event and cuts playback short."""
+
+        The robot's mic hardware is half-duplex: while the speaker plays, the near end is muted,
+        so the only moments she can hear the chef are the pauses between sentences. With barge-in
+        on, each pause is stretched to ``barge_gap_ms`` as a listening window; sustained speech in
+        a window fires ``_barge_in``, which sets the abort event and drops the rest of the reply."""
         chunks: "queue.Queue[np.ndarray | None]" = queue.Queue(maxsize=4)
         abort = threading.Event()
         self._speak_abort = abort
+        gap_s = self.s.barge_gap_ms / 1000 if self.s.barge_in else 0.0
 
         def produce() -> None:
             try:
@@ -229,6 +234,7 @@ class Session:
 
         self._speaking_until = float("inf")
         threading.Thread(target=produce, name="tts", daemon=True).start()
+        played_any = False
         try:
             while not abort.is_set():
                 try:
@@ -237,8 +243,12 @@ class Session:
                     continue
                 if chunk is None:
                     break
+                # Listening window between sentences — the only time the mic can hear the chef.
+                if played_any and gap_s > 0 and abort.wait(gap_s):
+                    break
                 try:
                     self.robot.speak_audio(chunk)
+                    played_any = True
                 except Exception:
                     log.exception("speaker push failed; dropping the rest of this reply")
                     abort.set()

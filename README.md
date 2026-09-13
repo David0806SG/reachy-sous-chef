@@ -116,12 +116,13 @@ Design choices worth knowing:
   voice and into the open mic, so only the motion is played.
 - **Latency is masked, not hidden.** As soon as an utterance is addressed to her she tilts into a
   "hmm" pose; Claude's round trip reads as her thinking.
-- **You can talk over her.** The robot's WebRTC pipeline does echo cancellation (measured: her own
-  voice never rises above 0.25 speech probability on her own mics), so the VAD keeps listening while
-  she speaks. ~400 ms of sustained speech cuts her off mid-sentence and your words go through the
-  normal pipeline — no name needed, the follow-up window is open. A cough won't stop her
-  (`barge_in_min_speech_ms`); set `barge_in: false` to restore strict turn-taking, which also makes
-  her deaf while speaking (plus a 400 ms tail) so she never transcribes herself.
+- **Keep talking over her and she yields at the sentence.** The mic hardware (XVF3800) is
+  half-duplex — while her speaker plays, your voice is muted to zero on her mics (measured: max
+  0.001 speech probability during double-talk), so mid-sentence interruption is physically
+  inaudible to her. Instead she pauses `barge_gap_ms` (500 ms) between sentences to listen; if
+  you're talking through the pause (300 ms sustained — a cough won't do it), she drops the rest of
+  the reply and your words go through the normal pipeline, no name needed. Set `barge_in: false`
+  for strict turn-taking with no listening pauses.
 - **Sentence-pipelined TTS.** Sentence 2 renders while sentence 1 plays.
 - **Photos leave the house only when asked.** The camera is read only by the `take_a_look` tool.
   Older photos are dropped from the conversation history after two turns.

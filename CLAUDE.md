@@ -28,10 +28,13 @@ thread) · `fake_robot.py` · `brain/{agent,tools,prompts}.py` · `audio/{vad,st
 - The daemon can be `state: "stopped"` while HTTP still answers (idle timeout / Reachy Mini Control) —
   a green `sous-chef check` hours ago means nothing. Restart with `POST /api/daemon/start?wake_up=true`
   and give it ~10 s to settle before connecting, or the first motion jobs time out / lose connection.
-- The WebRTC mic path has AEC: while she speaks at `speaker_gain` 0.85, her own voice measures ≤ 0.25
-  Silero speech-prob on her own mics (ambient max 0.39). This is what makes barge-in safe — the VAD
-  can listen during playback without her transcribing herself. Probe script: play TTS while logging
-  `speech_prob` per 512-sample chunk, compare against a silent baseline.
+- The mic path (XVF3800 DSP) is **half-duplex**, not just AEC: while the speaker plays, the near end
+  is gated to ~zero — measured max 0.001 Silero speech-prob for a person talking over playback vs
+  1.000 for the same person with the speaker silent. Her own echo also cancels to ~0.002. So: she can
+  never hear anyone mid-sentence; user speech reaches the mic only in playback gaps. Barge-in is
+  therefore sentence-granular (listening pauses between sentences), and any speech the VAD sees
+  during "speaking" is guaranteed to be the user. Don't trust a single-phase echo probe — measure
+  double-talk explicitly. `/api/audio/config/apply` writes raw XVF3800 params; don't touch it.
 
 ## Conventions
 - Every robot capability goes through the `Robot` protocol; `FakeRobot` must keep parity (tests depend on it).
@@ -42,5 +45,6 @@ thread) · `fake_robot.py` · `brain/{agent,tools,prompts}.py` · `audio/{vad,st
 ## Status
 Working on the physical robot — full ladder (`check → download-models → demo → say → chat → run`) passed 2026-09-13,
 voice loop verified live in the kitchen. Claude round trips ~6.5–7.5 s on `claude-fable-5-1` (masked by the hmm pose).
-Barge-in shipped 2026-09-13 (VAD listens during playback thanks to robot-side AEC; `barge_in` in config).
+Barge-in shipped 2026-09-13, sentence-granular: the half-duplex mic can't hear during playback, so she
+pauses `barge_gap_ms` between sentences to listen and yields at the boundary (`barge_in` in config).
 v2 ideas: streamed replies, DoA head turn, per-recipe notes, HF Space app.

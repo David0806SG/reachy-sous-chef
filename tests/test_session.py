@@ -168,6 +168,40 @@ def test_barge_in_aborts_speech(settings):
     assert session._speak_abort is None  # cleaned up
 
 
+class InstantTTS:
+    """Five instant sentence chunks — playback pacing comes only from the listening gaps."""
+
+    def synthesize(self, text):
+        for _ in range(5):
+            yield np.zeros(160, dtype=np.float32)
+
+
+def test_barge_in_during_listening_gap_drops_rest(settings):
+    settings.barge_gap_ms = 200
+    session, robot, *_ = make_session(settings, [], [])
+    robot.connect()
+    session.tts = InstantTTS()
+    t = threading.Thread(target=session.speak, args=("five sentences",))
+    t.start()
+    time.sleep(0.3)  # chunk 1 plays instantly; we're now inside a between-sentence gap
+    session._barge_in()
+    t.join(timeout=2.0)
+    assert not t.is_alive()
+    assert 1 <= len(robot.spoken) < 5  # she finished the current sentence, dropped the rest
+
+
+def test_no_listening_gaps_when_barge_disabled(settings):
+    settings.barge_in = False
+    settings.barge_gap_ms = 500
+    session, robot, *_ = make_session(settings, [], [])
+    robot.connect()
+    session.tts = InstantTTS()
+    t0 = time.monotonic()
+    session.speak("five sentences")
+    assert time.monotonic() - t0 < 0.5  # no 4 x 500 ms pauses
+    assert len(robot.spoken) == 5
+
+
 def test_barge_in_wiring_follows_setting(settings):
     session, *_ = make_session(settings, [], [])
     assert session.segmenter.on_barge is not None  # on by default

@@ -18,8 +18,9 @@ vad_threshold: 0.5
 vad_min_speech_ms: 250
 vad_end_silence_ms: 700               # raise to ~900 if she cuts you off mid-sentence
 vad_max_utterance_s: 20
-barge_in: true                        # talking over her stops her mid-sentence
-barge_in_min_speech_ms: 400           # sustained speech needed to interrupt (raise if she stops for coughs)
+barge_in: true                        # keep talking over her -> she stops at the end of the sentence
+barge_in_min_speech_ms: 300           # sustained speech in a listening gap that counts as an interruption
+barge_gap_ms: 500                     # she pauses this long between sentences to listen (mic is deaf while she talks)
 
 # --- Speech-to-text (faster-whisper, local) ----------------------------------
 whisper_model: small                  # tiny | base | small | medium | large-v3 | turbo

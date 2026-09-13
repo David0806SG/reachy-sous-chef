@@ -40,6 +40,7 @@ def tool_response(
 @pytest.fixture
 def settings(tmp_path) -> Settings:
     s = Settings()
+    s.barge_gap_ms = 50  # keep multi-sentence speak() fast in tests; gap logic has its own tests
     s.recipes_dir = str(tmp_path / "recipes")
     (tmp_path / "recipes").mkdir()
     (tmp_path / "recipes" / "pan-seared-ribeye.md").write_text(

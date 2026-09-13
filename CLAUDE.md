@@ -36,5 +36,6 @@ thread) · `fake_robot.py` · `brain/{agent,tools,prompts}.py` · `audio/{vad,st
 - Never file secrets: `.env` is git-ignored; `config.yaml` holds no keys.
 
 ## Status
-Built and reviewed, not yet run on the physical robot. First live pass: `check → download-models → demo → say → run`.
+Working on the physical robot — full ladder (`check → download-models → demo → say → chat → run`) passed 2026-09-13,
+voice loop verified live in the kitchen. Claude round trips ~6.5–7.5 s on `claude-fable-5-1` (masked by the hmm pose).
 v2 ideas: barge-in (`stop_speaking()` is wired), streamed replies, DoA head turn, per-recipe notes, HF Space app.
